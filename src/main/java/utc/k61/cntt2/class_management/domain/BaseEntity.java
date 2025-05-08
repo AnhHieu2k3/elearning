@@ -10,13 +10,15 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.time.Instant;
 
 @Getter
 @Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-public abstract class BaseEntity {
+public abstract class BaseEntity implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,11 +26,11 @@ public abstract class BaseEntity {
 
     @CreatedDate
     @Column(name = "created_date")
-    private Instant createdDate;
+    private Instant createdDate = Instant.now();
 
     @LastModifiedDate
     @Column(name = "last_modified_date")
-    private Instant lastModifiedDate;
+    private Instant lastModifiedDate = Instant.now();
 
     @Column(name = "created_by")
     @CreatedBy
@@ -39,6 +41,6 @@ public abstract class BaseEntity {
     private String lastModifiedBy;
 
     @Column(name = "deleted", columnDefinition = "boolean default false")
-    private Boolean deleted;
+    private Boolean deleted = false;
 
 }

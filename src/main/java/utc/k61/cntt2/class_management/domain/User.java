@@ -24,6 +24,11 @@ public class User extends BaseEntity {
     @NotBlank(message = "username must be not blank!")
     @Size(max = 30)
     @Column(unique = true)
+    private String userNumber;
+
+    @NotBlank(message = "username must be not blank!")
+    @Size(max = 30)
+    @Column(unique = true)
     private String username;
 
     @NotBlank(message = "password must be not blank!")
@@ -50,8 +55,9 @@ public class User extends BaseEntity {
 
     private LocalDate dob;
 
-    @OneToOne
-    private Role role;
+    private String role;
+
+    private String address;
 
     private Boolean active = false;
 

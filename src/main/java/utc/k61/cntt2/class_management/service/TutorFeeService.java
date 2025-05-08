@@ -15,13 +15,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import utc.k61.cntt2.class_management.domain.*;
 import utc.k61.cntt2.class_management.dto.*;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BusinessException;
 import utc.k61.cntt2.class_management.exception.ResourceNotFoundException;
 import utc.k61.cntt2.class_management.repository.TutorFeeDetailRepository;
 import utc.k61.cntt2.class_management.repository.TutorFeeRepository;
 import utc.k61.cntt2.class_management.service.email.EmailService;
-//import utc.k61.cntt2.class_management.repository.TutorFeeRepository;
 
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
@@ -123,7 +122,6 @@ public class TutorFeeService {
                 .email(student.getEmail())
                 .phone(student.getPhone())
                 .address(student.getAddress())
-                .dob(student.getDob())
                 .id(tutorFeeDetail.getId())
                 .className(classroom.getClassName())
                 .feeNotSubmitted(tutorFeeDetail.getFeeAmount() - tutorFeeDetail.getFeeSubmitted())
@@ -472,7 +470,7 @@ public class TutorFeeService {
 
     public Object pay(Long tutorFeeDetailId) {
         User user = userService.getCurrentUserLogin();
-        if (user.getRole().getName() != RoleName.TEACHER) {
+        if (user.getRole() != Role.TEACHER.getValue()) {
             throw new BusinessException("Not have permission");
         }
         TutorFeeDetail tutorFeeDetail = tutorFeeDetailRepository.findById(tutorFeeDetailId)
@@ -484,8 +482,8 @@ public class TutorFeeService {
 
     public Object getTutorFeeForStudent(Long classId) {
         User user = userService.getCurrentUserLogin();
-        if (user.getRole().getName() != RoleName.STUDENT) {
-            throw new BusinessException("Not have permission");
+        if (!StringUtils.equalsIgnoreCase(user.getRole(), Role.STUDENT.getValue())) {
+            throw new BusinessException("Require Role Student!");
         }
         Classroom classroom = classroomService.getById(classId);
         ClassRegistration classRegistration = classroom.getClassRegistrations().stream()

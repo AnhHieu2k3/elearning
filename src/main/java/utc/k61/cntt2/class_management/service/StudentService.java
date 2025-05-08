@@ -16,13 +16,11 @@ import org.springframework.stereotype.Service;
 import utc.k61.cntt2.class_management.domain.*;
 import utc.k61.cntt2.class_management.dto.ApiResponse;
 import utc.k61.cntt2.class_management.dto.StudentDto;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.NotificationType;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BusinessException;
 import utc.k61.cntt2.class_management.exception.ResourceNotFoundException;
-import utc.k61.cntt2.class_management.repository.ClassAttendanceRepository;
-import utc.k61.cntt2.class_management.repository.ClassRegistrationRepository;
-import utc.k61.cntt2.class_management.repository.ClassroomRepository;
-import utc.k61.cntt2.class_management.repository.TutorFeeDetailRepository;
+import utc.k61.cntt2.class_management.repository.*;
 
 import javax.persistence.criteria.Predicate;
 import javax.transaction.Transactional;
@@ -47,6 +45,8 @@ public class StudentService {
     private final UserService userService;
     private final ClassroomService classroomService;
     private final String tempFolder;
+    private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
 
     @Autowired
     public StudentService(
@@ -56,7 +56,7 @@ public class StudentService {
             ClassroomRepository classroomRepository,
             UserService userService,
             ClassroomService classroomService,
-            @Value("${app.temp}") String tempFolder) {
+            @Value("${app.temp}") String tempFolder, NotificationRepository notificationRepository, UserRepository userRepository) {
         this.classRegistrationRepository = classRegistrationRepository;
         this.classAttendanceRepository = classAttendanceRepository;
         this.tutorFeeDetailRepository = tutorFeeDetailRepository;
@@ -64,6 +64,8 @@ public class StudentService {
         this.userService = userService;
         this.classroomService = classroomService;
         this.tempFolder = tempFolder;
+        this.notificationRepository = notificationRepository;
+        this.userRepository = userRepository;
     }
 
     public List<ClassRegistration> getAllStudentForClass(Long classId) {
@@ -72,7 +74,7 @@ public class StudentService {
 
     public Page<?> search(Map<String, String> params, Pageable pageable) {
         User currentLoginUser = userService.getCurrentUserLogin();
-        if (currentLoginUser.getRole().getName() != RoleName.TEACHER) {
+        if (currentLoginUser.getRole() != Role.TEACHER.getValue()) {
             throw new BusinessException("Require Role Teacher!");
         }
         List<Classroom> classrooms = classroomRepository.findAllByTeacherId(currentLoginUser.getId());
@@ -140,6 +142,12 @@ public class StudentService {
         });
     }
 
+    public StudentDto getStudentDetail(String userNumber){
+        User user = userRepository.findByUserNumber(userNumber)
+                .orElseThrow(() -> new BusinessException("Not found user for user number " + userNumber));
+        return StudentDto.mapToStudentDto(user);
+    }
+
     public Object addStudentForClass(StudentDto studentDto, Long classId) {
         Classroom classroom = classroomService.getById(classId);
         ClassRegistration student = ClassRegistration.newBuilder()
@@ -150,26 +158,34 @@ public class StudentService {
                 .phone(studentDto.getPhone())
                 .address(studentDto.getAddress()).build();
         student.setClassroom(classroom);
-        if (StringUtils.isNotBlank(student.getEmail())) {
-            List<User> users = userService.findAllByEmailIn(List.of(studentDto.getEmail()));
-            Optional<User> existingUser = users.stream().filter(user -> StringUtils.equalsIgnoreCase(user.getEmail(), student.getEmail())).findAny();
-            existingUser.ifPresent(student::setStudent);
+        if (StringUtils.isNotBlank(studentDto.getUserNumber())) {
+            Optional<User> existingUser = userRepository.findByUserNumber(studentDto.getUserNumber());
             if (existingUser.isPresent()) {
                 student.setStudent(existingUser.get());
             } else {
-                if (StringUtils.isNotBlank(student.getEmail())) {
-                    try {
-                        userService.createDefaultStudentAccount(student);
-                    } catch (Exception e) {
-                        log.error("Failed to create account for email {}", student.getEmail(), e);
-                    }
-                }
+                try {
+                    userService.createDefaultStudentAccount(student);
 
+                    generateNotification(classroom, student);
+                } catch (Exception e) {
+                    log.error("Failed to create account for email {}", student.getEmail(), e);
+                }
             }
         }
         classRegistrationRepository.save(student);
 
         return new ApiResponse(true, "Success");
+    }
+
+    private void generateNotification(Classroom classroom, ClassRegistration student) {
+        Notification notification = new Notification();
+        notification.setFromUserNumber(classroom.getTeacher().getUserNumber());
+        notification.setToUserNumber(student.getStudent().getUserNumber());
+        notification.setContent("Bạn đã được thêm vào lớp " + classroom.getClassName());
+        notification.setType(NotificationType.ADDITIONAL_STUDENT_NOTIFICATION.getValue());
+
+        log.info("Sent notification to user {}", student.getStudent().getUserNumber());
+        notificationRepository.save(notification);
     }
 
     public String extractListStudent(Long classId) {
@@ -218,7 +234,7 @@ public class StudentService {
     @Transactional
     public ApiResponse deleteStudent(Long studentId) {
         User user = userService.getCurrentUserLogin();
-        if (user.getRole().getName() != RoleName.TEACHER) {
+        if (user.getRole() != Role.TEACHER.getValue() || StringUtils.equalsIgnoreCase(user.getRole(), Role.ADMIN.getValue())) {
             throw new BusinessException("Missing permission");
         }
         List<Classroom> classrooms = user.getClassrooms();

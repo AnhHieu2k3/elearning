@@ -7,16 +7,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import utc.k61.cntt2.class_management.domain.ClassRegistration;
-import utc.k61.cntt2.class_management.domain.Role;
 import utc.k61.cntt2.class_management.domain.User;
 import utc.k61.cntt2.class_management.dto.*;
 import utc.k61.cntt2.class_management.dto.security.SignUpRequest;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BadRequestException;
 import utc.k61.cntt2.class_management.exception.BusinessException;
-import utc.k61.cntt2.class_management.exception.ResourceNotFoundException;
 import utc.k61.cntt2.class_management.repository.ClassRegistrationRepository;
-import utc.k61.cntt2.class_management.repository.RoleRepository;
 import utc.k61.cntt2.class_management.repository.UserRepository;
 import utc.k61.cntt2.class_management.security.SecurityUtils;
 import utc.k61.cntt2.class_management.service.email.EmailService;
@@ -25,13 +22,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Log4j2
 public class UserService {
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
     private final EmailService emailService;
@@ -39,20 +34,18 @@ public class UserService {
 
     @Autowired
     public UserService(UserRepository userRepository,
-                       RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
                        EmailService emailService,
                        ClassRegistrationRepository classRegistrationRepository) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.classRegistrationRepository = classRegistrationRepository;
     }
 
     public void createNewUser(SignUpRequest signUpRequest) {
-        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            String errorMessage = String.format("Username %s already in use", signUpRequest.getUsername());
+        if (userRepository.existsByUserNumber(signUpRequest.getUserNumber())) {
+            String errorMessage = String.format("Username %s already in use", signUpRequest.getUserNumber());
             throw new BadRequestException(errorMessage);
         }
 
@@ -61,25 +54,30 @@ public class UserService {
             throw new BadRequestException(errorMessage);
         }
 
-        User user = new User();
-        user.setEmail(signUpRequest.getEmail());
-        user.setUsername(signUpRequest.getUsername());
-        user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
+        User user = generateUser(signUpRequest);
 
-        Optional<Role> userRole = roleRepository.findByName(RoleName.TEACHER);
-        if (userRole.isEmpty()) {
-            log.error("User Role not set.");
-            throw new ResourceNotFoundException("Server Error");
-        }
-        user.setRole(userRole.get());
+        sendEmailVerification(user);
+        user = userRepository.save(user);
+    }
+
+    private User generateUser(SignUpRequest signUpRequest) {
+        User user = new User();
+        user.setUserNumber(RandomStringUtils.randomNumeric(10));
+        user.setEmail(signUpRequest.getEmail());
+        user.setUsername(signUpRequest.getUserNumber());
+        user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
+        user.setFirstName(signUpRequest.getFirstName());
+        user.setLastName(signUpRequest.getLastName());
+        user.setSurname(signUpRequest.getSurname());
+        user.setDob(signUpRequest.getDob());
+
+        user.setRole(Role.STUDENT.getValue());
 
         user.setActive(false);
         user.setNumberActiveAttempt(0);
         String activeCode = RandomStringUtils.randomAlphanumeric(6);
         user.setActiveCode(activeCode);
-
-        sendEmailVerification(user);
-        user = userRepository.save(user);
+        return user;
     }
 
     private void sendEmailVerification(User user) {
@@ -99,35 +97,16 @@ public class UserService {
         if (StringUtils.isNotBlank(student.getEmail())) {
             String randomPassword = RandomStringUtils.randomAlphanumeric(6);
             SignUpRequest signUpRequest = new SignUpRequest();
-            signUpRequest.setUsername(student.getEmail());
+            signUpRequest.setUserNumber(student.getEmail());
             signUpRequest.setEmail(student.getEmail());
             signUpRequest.setPassword(randomPassword);
+            signUpRequest.setFirstName(student.getFirstName());
+            signUpRequest.setLastName(student.getLastName());
+            signUpRequest.setSurname(student.getSurname());
+            signUpRequest.setDob(student.getDob());
 
-            if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-                throw new BadRequestException("Username " + signUpRequest.getUsername() + " already in use");
-            }
-
-            if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-                throw new BadRequestException("Email " + signUpRequest.getEmail() + " already in use");
-            }
-
-            User user = new User();
-            user.setEmail(signUpRequest.getEmail());
-            user.setUsername(signUpRequest.getUsername());
-            user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
-
-            Optional<Role> userRole = roleRepository.findByName(RoleName.STUDENT);
-            if (userRole.isEmpty()) {
-                log.error("User Role not set.");
-                throw new BusinessException("Server Error: User role not found");
-            }
-            user.setRole(userRole.get());
-
+            User user = generateUser(signUpRequest);
             user.setActive(true);
-//            user.setNumberActiveAttempt(0);
-//            String activeCode = RandomStringUtils.randomAlphanumeric(6);
-//            user.setActiveCode(activeCode);
-
             sendEmailVerification(user, randomPassword);
             user = userRepository.save(user);
 
@@ -256,7 +235,6 @@ public class UserService {
         userRepository.save(user);
         return new ApiResponse(true, "Success");
     }
-
 
     public List<User> findAllByEmailIn(List<String> emails) {
         return userRepository.findAllByEmailIn(emails);

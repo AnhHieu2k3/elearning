@@ -13,7 +13,7 @@ import utc.k61.cntt2.class_management.domain.ClassDocument;
 import utc.k61.cntt2.class_management.domain.Classroom;
 import utc.k61.cntt2.class_management.domain.User;
 import utc.k61.cntt2.class_management.dto.ApiResponse;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BusinessException;
 import utc.k61.cntt2.class_management.exception.ResourceNotFoundException;
 import utc.k61.cntt2.class_management.repository.ClassroomRepository;
@@ -56,7 +56,7 @@ public class DocumentService {
 
     public Page<ClassDocument> search(Map<String, String> params, Pageable pageable) {
         User currentLoginUser = userService.getCurrentUserLogin();
-        if (currentLoginUser.getRole().getName() != RoleName.TEACHER) {
+        if (currentLoginUser.getRole() != Role.TEACHER.getValue()) {
             throw new BusinessException("Require Role Teacher!");
         }
         List<Classroom> classrooms = classroomRepository.findAllByTeacherId(currentLoginUser.getId());
@@ -158,7 +158,7 @@ public class DocumentService {
     @Transactional
     public ApiResponse deleteDocument(Long documentId) {
         User user = userService.getCurrentUserLogin();
-        if (user.getRole().getName() != RoleName.TEACHER) {
+        if (user.getRole() != Role.TEACHER.getValue()) {
             throw new BusinessException("Missing permission");
         }
         List<Classroom> classrooms = user.getClassrooms();

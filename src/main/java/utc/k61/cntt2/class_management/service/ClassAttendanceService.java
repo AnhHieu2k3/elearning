@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import utc.k61.cntt2.class_management.domain.*;
 import utc.k61.cntt2.class_management.dto.ClassAttendanceDto;
 import utc.k61.cntt2.class_management.dto.StudentAttendanceResultDto;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BusinessException;
 import utc.k61.cntt2.class_management.exception.ResourceNotFoundException;
 import utc.k61.cntt2.class_management.repository.ClassAttendanceRepository;
@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.stream.Collectors;
 
 @Log4j2
@@ -108,7 +107,7 @@ public class ClassAttendanceService {
 
     public Object getStudentAttendanceResult(Long classId) {
         User currentLoginUser = userService.getCurrentUserLogin();
-        if (currentLoginUser.getRole().getName() != RoleName.STUDENT) {
+        if (currentLoginUser.getRole() != Role.STUDENT.getValue()) {
             throw new BusinessException("Require Role Student!");
         }
         Classroom classroom = classroomRepository.findById(classId)

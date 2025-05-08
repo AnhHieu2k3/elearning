@@ -6,10 +6,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import javax.validation.Valid;
+import javax.persistence.Column;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
+import java.time.LocalDate;
+import java.util.Date;
 
 @Getter
 @Setter
@@ -19,7 +21,7 @@ import javax.validation.constraints.Size;
 public class SignUpRequest {
     @NotBlank(message = "username must not be empty!")
     @Size(min = 3, max = 15)
-    private String username;
+    private String userNumber;
 
     @Email
     @NotBlank(message = "email must not be empty!")
@@ -30,4 +32,15 @@ public class SignUpRequest {
     @NotBlank(message = "password length must be greater 6!")
     @Size(min = 6, max = 20)
     private String password;
+
+    @NotBlank(message = "firstname must not be empty")
+    private String firstName;
+
+    @NotBlank(message = "surname must not be empty")
+    private String surname;
+
+    @NotBlank(message = "lastname must not be empty")
+    private String lastName;
+
+    private LocalDate dob;
 }

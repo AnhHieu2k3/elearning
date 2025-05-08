@@ -12,7 +12,7 @@ import utc.k61.cntt2.class_management.domain.Classroom;
 import utc.k61.cntt2.class_management.domain.User;
 import utc.k61.cntt2.class_management.dto.ApiResponse;
 import utc.k61.cntt2.class_management.dto.NewClassScheduleRequest;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BusinessException;
 import utc.k61.cntt2.class_management.exception.ResourceNotFoundException;
 import utc.k61.cntt2.class_management.repository.ClassAttendanceRepository;
@@ -138,7 +138,7 @@ public class ClassScheduleService {
     @Transactional
     public ApiResponse deleteSchedule(Long scheduleId) {
         User user = userService.getCurrentUserLogin();
-        if (user.getRole().getName() != RoleName.TEACHER) {
+        if (user.getRole() == Role.STUDENT.getValue()) {
             throw new BusinessException("Missing permission");
         }
         List<Classroom> classrooms = user.getClassrooms();

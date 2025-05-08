@@ -11,7 +11,7 @@ import utc.k61.cntt2.class_management.domain.User;
 import utc.k61.cntt2.class_management.dto.ClassPeriodInWeek;
 import utc.k61.cntt2.class_management.dto.DashboardDataDto;
 import utc.k61.cntt2.class_management.enumeration.ClassPeriod;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BusinessException;
 import utc.k61.cntt2.class_management.repository.ClassRegistrationRepository;
 import utc.k61.cntt2.class_management.repository.ClassScheduleRepository;
@@ -53,9 +53,9 @@ public class DashboardService {
         LocalDate startOfWeek = currentDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endOfWeek = currentDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
         List<Classroom> classrooms;
-        if (userCurrent.getRole().getName() == RoleName.TEACHER) {
+        if (userCurrent.getRole() == Role.TEACHER.getValue()) {
             classrooms = classroomRepository.findAllByTeacherId(userCurrent.getId());
-        } else if (userCurrent.getRole().getName() == RoleName.STUDENT) {
+        } else if (userCurrent.getRole() == Role.STUDENT.getValue()) {
             List<ClassRegistration> classRegistrations = classRegistrationRepository.findAllByStudentId(userCurrent.getId());
             classrooms = classRegistrations.stream().map(ClassRegistration::getClassroom).collect(Collectors.toList());
         } else {
@@ -133,7 +133,7 @@ public class DashboardService {
     public DashboardDataDto getDashboardData() {
         User user = userService.getCurrentUserLogin();
         DashboardDataDto dashboardDataDto = new DashboardDataDto();
-        if (user.getRole().getName() != RoleName.TEACHER) {
+        if (user.getRole() != Role.TEACHER.getValue()) {
             throw new BusinessException("Require role Teacher");
         }
         List<Classroom> classrooms = user.getClassrooms();

@@ -9,6 +9,7 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 public class UserDetailDto {
+    private String userNumber;
     private String username;
     private String email;
     private String phone;
@@ -20,6 +21,7 @@ public class UserDetailDto {
     private String role;
 
     public UserDetailDto(User user) {
+        this.userNumber = user.getUserNumber();
         this.username = user.getUsername();
         this.email= user.getEmail();
         this.phone = user.getPhone();
@@ -27,7 +29,7 @@ public class UserDetailDto {
         this.surname= user.getSurname();
         this.lastName = user.getLastName();
         this.dob = user.getDob();
-        this.accountType = user.getRole().getName().toString();
-        this.role = user.getRole().getName().toString();
+        this.accountType = user.getRole();
+        this.role = user.getRole();
     }
 }

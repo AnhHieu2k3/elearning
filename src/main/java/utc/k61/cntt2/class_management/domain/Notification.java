@@ -16,7 +16,7 @@ import javax.persistence.ManyToOne;
 public class Notification extends BaseEntity {
     private String content;
     private String type;
-
-    @ManyToOne
-    private User user;
+    private String fromUserNumber;
+    private String toUserNumber;
+    private Boolean isRead = false;
 }

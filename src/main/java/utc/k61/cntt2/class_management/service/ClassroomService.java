@@ -15,16 +15,13 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import utc.k61.cntt2.class_management.domain.ClassRegistration;
-import utc.k61.cntt2.class_management.domain.ClassSchedule;
 import utc.k61.cntt2.class_management.domain.Classroom;
 import utc.k61.cntt2.class_management.domain.User;
 import utc.k61.cntt2.class_management.dto.ApiResponse;
-import utc.k61.cntt2.class_management.dto.ClassPeriodInWeek;
 import utc.k61.cntt2.class_management.dto.classroom.ClassroomDto;
 import utc.k61.cntt2.class_management.dto.classroom.NewClassRequest;
 import utc.k61.cntt2.class_management.dto.StudentDto;
-import utc.k61.cntt2.class_management.enumeration.ClassPeriod;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BusinessException;
 import utc.k61.cntt2.class_management.exception.ResourceNotFoundException;
 import utc.k61.cntt2.class_management.repository.ClassRegistrationRepository;
@@ -38,16 +35,12 @@ import javax.persistence.criteria.Predicate;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Log4j2
@@ -99,7 +92,7 @@ public class ClassroomService {
                 .flatMap(userRepository::findByUsername)
                 .orElseThrow(() -> new BusinessException("Can not find current user login!"));
 
-        if (currentLoginUser.getRole().getName() != RoleName.TEACHER) {
+        if (currentLoginUser.getRole() == Role.STUDENT.getValue()) {
             throw new BusinessException("Only teacher can create new class!");
         }
 
@@ -222,11 +215,12 @@ public class ClassroomService {
                 studentDto.setEmail(row.getCell(3).getStringCellValue());
                 studentDto.setPhone(getStringCellValue(row, 4));
                 studentDto.setAddress(getStringCellValue(row, 5));
-                XSSFCell dob = row.getCell(6);
-                if (dob != null) {
-                    studentDto.setDob(dob.getDateCellValue());
+                XSSFCell dobCell = row.getCell(6);
+                if (dobCell != null) {
+                    Date date = dobCell.getDateCellValue();
+                    LocalDate dob = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                    studentDto.setDob(dob);
                 }
-
                 studentDtos.add(studentDto);
             }
 
@@ -255,7 +249,7 @@ public class ClassroomService {
         User currentLoginUser = SecurityUtils.getCurrentUserLogin()
                 .flatMap(userRepository::findByUsername)
                 .orElseThrow(() -> new BusinessException("Can not find current user login!"));
-        if (currentLoginUser.getRole().getName() != RoleName.TEACHER) {
+        if (currentLoginUser.getRole() == Role.STUDENT.getValue()) {
             throw new BusinessException("Require Role Teacher!");
         }
         Specification<Classroom> specs = getSpecification(params, currentLoginUser);
@@ -300,7 +294,7 @@ public class ClassroomService {
         User currentLoginUser = SecurityUtils.getCurrentUserLogin()
                 .flatMap(userRepository::findByUsername)
                 .orElseThrow(() -> new BusinessException("Can not find current user login!"));
-        if (currentLoginUser.getRole().getName() != RoleName.STUDENT) {
+        if (!StringUtils.equalsIgnoreCase(currentLoginUser.getRole(), Role.STUDENT.getValue())) {
             throw new BusinessException("Require Role Student!");
         }
         List<ClassRegistration> classRegistrations = classRegistrationRepository.findAllByStudentId(currentLoginUser.getId());

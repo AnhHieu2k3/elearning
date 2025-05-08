@@ -16,7 +16,7 @@ import utc.k61.cntt2.class_management.dto.ApiResponse;
 import utc.k61.cntt2.class_management.dto.ExamScoreDto;
 import utc.k61.cntt2.class_management.dto.NewExamRequest;
 import utc.k61.cntt2.class_management.dto.StudentExamResultDto;
-import utc.k61.cntt2.class_management.enumeration.RoleName;
+import utc.k61.cntt2.class_management.enumeration.Role;
 import utc.k61.cntt2.class_management.exception.BusinessException;
 import utc.k61.cntt2.class_management.exception.ResourceNotFoundException;
 import utc.k61.cntt2.class_management.repository.ExamRepository;
@@ -54,7 +54,7 @@ public class ExamScoreService {
 
     public ApiResponse createNewExam(NewExamRequest request) {
         User user = userService.getCurrentUserLogin();
-        if (user.getRole().getName() != RoleName.TEACHER) {
+        if (user.getRole() == Role.STUDENT.getValue()) {
             throw new BusinessException("Require role teacher!");
         }
         Classroom classroom = classroomService.getById(request.getClassId());
